@@ -1,0 +1,809 @@
+#+TITLE: Google Ads API — Structure, Concepts & Query Model
+#+AUTHOR: JW
+#+DATE: 2026-02-27
+#+PROPERTY: header-args:mermaid :exports code :eval never-export
+#+STARTUP: showall
+#+OPTIONS: toc:3 num:t
+
+* Overview
+:PROPERTIES:
+:CUSTOM_ID: overview
+:END:
+
+The Google Ads API (v23, current as of February 2026) exposes a resource-oriented
+data model queried via GAQL (Google Ads Query Language). This document maps the
+API's structure, the GAQL query model, and the field metadata system.
+
+Canonical references:
+
+- [[https://developers.google.com/google-ads/api/docs/concepts/api-structure][API Structure]]
+- [[https://developers.google.com/google-ads/api/fields/v23/overview][Reporting Reference v23]]
+- [[https://developers.google.com/google-ads/api/docs/query/overview][Google Ads Query Language]]
+- [[https://developers.google.com/google-ads/api/docs/concepts/field-service][Resource Metadata (GoogleAdsFieldService)]]
+- [[https://developers.google.com/google-ads/api/docs/developer-toolkit/gaa-query-builder][Interactive Query Builder]]
+
+* Object Hierarchy
+:PROPERTIES:
+:CUSTOM_ID: object-hierarchy
+:END:
+
+A Google Ads account is a tree. Everything hangs off the =customer= resource.
+
+#+begin_src mermaid :file img/object-hierarchy.png
+graph TD
+    Customer["Customer<br/><i>Top-level account</i>"]
+    Campaign["Campaign<br/><i>Budget, dates, channel type</i>"]
+    AdGroup["Ad Group<br/><i>Logical ad collection</i>"]
+    AdGroupAd["Ad Group Ad<br/><i>The actual ad creative</i>"]
+    AdGroupCriterion["Ad Group Criterion<br/><i>Keywords, audiences, etc.</i>"]
+    CampaignCriterion["Campaign Criterion<br/><i>Locations, devices, etc.</i>"]
+    CampaignBudget["Campaign Budget<br/><i>Daily/total budget</i>"]
+    Asset["Asset<br/><i>Images, videos, text</i>"]
+    AssetGroup["Asset Group<br/><i>Performance Max assets</i>"]
+    Extension["Extensions<br/><i>Sitelinks, callouts, etc.</i>"]
+    Label["Label<br/><i>User-defined tags</i>"]
+    BiddingStrategy["Bidding Strategy<br/><i>Shared or campaign-level</i>"]
+
+    Customer --> Campaign
+    Customer --> BiddingStrategy
+    Customer --> Label
+    Customer --> Asset
+
+    Campaign --> AdGroup
+    Campaign --> CampaignCriterion
+    Campaign --> CampaignBudget
+    Campaign --> AssetGroup
+    Campaign --> Extension
+
+    AdGroup --> AdGroupAd
+    AdGroup --> AdGroupCriterion
+    AdGroup --> Extension
+
+    AdGroupAd -.-> Asset
+    AssetGroup -.-> Asset
+
+    Label -.-> Campaign
+    Label -.-> AdGroup
+    Label -.-> AdGroupAd
+
+    BiddingStrategy -.-> Campaign
+
+    style Customer fill:#4285F4,color:#fff
+    style Campaign fill:#34A853,color:#fff
+    style AdGroup fill:#FBBC04,color:#000
+    style AdGroupAd fill:#EA4335,color:#fff
+    style Asset fill:#9C27B0,color:#fff
+#+end_src
+
+** Resource Name Convention
+
+Every resource has a =resource_name= path encoding its position in the hierarchy:
+
+#+begin_example
+customers/{customer_id}/campaigns/{campaign_id}
+customers/{customer_id}/adGroups/{ad_group_id}
+customers/{customer_id}/adGroupAds/{ad_group_id}~{ad_id}
+customers/{customer_id}/adGroupCriteria/{ad_group_id}~{criterion_id}
+#+end_example
+
+** Object ID Scoping
+
+Not all IDs are globally unique. The scoping rules matter for local storage design.
+
+| Object              | Scope of Uniqueness | Globally Unique? | Composite Key                      |
+|---------------------+---------------------+------------------+------------------------------------|
+| Budget ID           | Global              | Yes              | —                                  |
+| Campaign ID         | Global              | Yes              | —                                  |
+| Ad Group ID         | Global              | Yes              | —                                  |
+| Ad ID               | Ad Group            | No               | =(AdGroupId, AdId)= is unique      |
+| AdGroupCriterion ID | Ad Group            | No               | =(AdGroupId, CriterionId)= unique  |
+| CampaignCriterion   | Campaign            | No               | =(CampaignId, CriterionId)= unique |
+| Label ID            | Global              | Yes              | —                                  |
+| UserList ID         | Global              | Yes              | —                                  |
+| Asset ID            | Global              | Yes              | —                                  |
+
+* Campaign Types
+:PROPERTIES:
+:CUSTOM_ID: campaign-types
+:END:
+
+Campaigns have an =advertising_channel_type= that determines what features and
+resources are available.
+
+#+begin_src mermaid :file img/campaign-types.png
+graph LR
+    subgraph "Campaign Channel Types"
+        Search["SEARCH"]
+        Display["DISPLAY"]
+        Shopping["SHOPPING"]
+        Video["VIDEO"]
+        PMax["PERFORMANCE_MAX"]
+        DemandGen["DEMAND_GEN"]
+        App["MULTI_CHANNEL"]
+        Smart["SMART"]
+        Local["LOCAL"]
+        Hotel["HOTEL"]
+        Travel["TRAVEL"]
+    end
+
+    subgraph "Ad Group Structure"
+        SingleAG["Single Ad Group<br/><i>(App campaigns)</i>"]
+        MultiAG["Multiple Ad Groups<br/><i>(all others)</i>"]
+    end
+
+    subgraph "Targeting"
+        Keywords["Keywords"]
+        Audiences["Audiences"]
+        Placements["Placements"]
+        ProductGroups["Product Groups"]
+        AssetGroups["Asset Groups"]
+    end
+
+    Search --> Keywords
+    Search --> Audiences
+    Display --> Audiences
+    Display --> Placements
+    Shopping --> ProductGroups
+    PMax --> AssetGroups
+    Video --> Audiences
+    DemandGen --> Audiences
+
+    App --> SingleAG
+    Search --> MultiAG
+    Display --> MultiAG
+    Shopping --> MultiAG
+#+end_src
+
+* GAQL — Google Ads Query Language
+:PROPERTIES:
+:CUSTOM_ID: gaql
+:END:
+
+GAQL looks like SQL but is fundamentally different. There are no JOINs, no
+subqueries, no aggregation functions. One resource per query, always.
+
+** Query Structure
+
+#+begin_src mermaid :file img/gaql-structure.png
+graph LR
+    subgraph "GAQL Clauses"
+        SELECT["SELECT<br/><i>fields, metrics, segments</i>"]
+        FROM["FROM<br/><i>exactly one resource</i>"]
+        WHERE["WHERE<br/><i>filter predicates</i>"]
+        ORDER["ORDER BY<br/><i>sort results</i>"]
+        LIMIT["LIMIT<br/><i>row cap</i>"]
+        PARAMS["PARAMETERS<br/><i>include_drafts, etc.</i>"]
+    end
+
+    SELECT --> FROM
+    FROM --> WHERE
+    WHERE --> ORDER
+    ORDER --> LIMIT
+    LIMIT --> PARAMS
+
+    style SELECT fill:#4285F4,color:#fff
+    style FROM fill:#EA4335,color:#fff
+    style WHERE fill:#FBBC04,color:#000
+    style ORDER fill:#34A853,color:#fff
+    style LIMIT fill:#9C27B0,color:#fff
+    style PARAMS fill:#607D8B,color:#fff
+#+end_src
+
+** Required: SELECT and FROM. Optional: everything else.
+
+#+begin_src sql :eval no
+-- Minimal query
+SELECT campaign.name
+FROM campaign
+
+-- Full query with all clauses
+SELECT
+  campaign.name,
+  campaign.status,
+  metrics.impressions,
+  metrics.clicks,
+  metrics.cost_micros,
+  segments.date
+FROM campaign
+WHERE segments.date DURING LAST_30_DAYS
+  AND campaign.status != 'REMOVED'
+ORDER BY metrics.cost_micros DESC
+LIMIT 50
+PARAMETERS include_drafts = true
+#+end_src
+
+** The Three Field Categories
+
+Every field in GAQL falls into exactly one of three categories. The =FROM= resource
+determines which fields from each category are available.
+
+#+begin_src mermaid :file img/field-categories.png
+graph TB
+    Resource["<b>FROM resource</b><br/><i>e.g., campaign, ad_group</i>"]
+
+    subgraph "Attributes"
+        RA["Resource Attributes<br/><code>campaign.name</code><br/><code>campaign.status</code><br/><code>campaign.id</code>"]
+        AA["Attributed Resource Fields<br/><code>customer.descriptive_name</code><br/><code>campaign_budget.amount_micros</code>"]
+    end
+
+    subgraph "Metrics"
+        M["Performance Metrics<br/><code>metrics.clicks</code><br/><code>metrics.impressions</code><br/><code>metrics.cost_micros</code><br/><code>metrics.conversions</code>"]
+    end
+
+    subgraph "Segments"
+        S["Segment Fields<br/><code>segments.date</code><br/><code>segments.device</code><br/><code>segments.ad_network_type</code>"]
+    end
+
+    Resource -->|"own fields"| RA
+    Resource -->|"implicit join"| AA
+    Resource -->|"available metrics"| M
+    Resource -->|"split rows by"| S
+
+    style Resource fill:#EA4335,color:#fff
+    style RA fill:#E8F0FE,color:#000
+    style AA fill:#E8F0FE,color:#000
+    style M fill:#E6F4EA,color:#000
+    style S fill:#FEF7E0,color:#000
+#+end_src
+
+- *Attributes*: Properties of the resource itself or implicitly joined parent resources
+- *Metrics*: Aggregated performance data (clicks, impressions, cost, conversions)
+- *Segments*: Dimensions that split metric rows (date, device, network)
+
+#+begin_quote
+Adding a segment to a query multiplies rows. =segments.date= produces one row per
+day per entity. =segments.date= + =segments.device= produces one row per day per
+device per entity.
+#+end_quote
+
+** Compatibility Constraints
+
+Not all fields can appear together. The API enforces compatibility:
+
+#+begin_src mermaid :file img/compatibility.png
+graph TD
+    Q["GAQL Query"]
+
+    Q --> FromRes["FROM resource<br/><i>determines the universe</i>"]
+    FromRes --> Check{"Are all selected fields<br/>in selectableWith<br/>for each other?"}
+
+    Check -->|Yes| Valid["Valid Query"]
+    Check -->|No| Invalid["QUERY_ERROR<br/>Incompatible fields"]
+
+    FromRes --> AttrRes["attributeResources<br/><i>implicitly joinable</i>"]
+    FromRes --> AvailMetrics["metrics list<br/><i>available metrics</i>"]
+    FromRes --> AvailSegs["segments list<br/><i>available segments</i>"]
+
+    style Valid fill:#34A853,color:#fff
+    style Invalid fill:#EA4335,color:#fff
+    style Check fill:#FBBC04,color:#000
+#+end_src
+
+You discover compatibility programmatically via =GoogleAdsFieldService=:
+
+#+begin_src text :eval no
+GET https://googleads.googleapis.com/v23/googleAdsFields/ad_group
+
+Response:
+{
+  "name": "ad_group",
+  "category": "RESOURCE",
+  "selectableWith": ["campaign", "customer", "metrics.average_cpc", "segments.device", ...],
+  "attributeResources": ["customer", "campaign"],
+  "metrics": ["metrics.conversions", "metrics.clicks", ...],
+  "segments": ["segments.date", "segments.ad_network_type", ...]
+}
+#+end_src
+
+* Services Architecture
+:PROPERTIES:
+:CUSTOM_ID: services
+:END:
+
+There are three service types:
+
+#+begin_src mermaid :file img/services.png
+graph LR
+    subgraph "GoogleAdsService"
+        Search["Search<br/><i>Paginated (10k rows/page)</i>"]
+        SearchStream["SearchStream<br/><i>Streaming (preferred)</i>"]
+    end
+
+    subgraph "Mutate Services"
+        CampaignSvc["CampaignService"]
+        AdGroupSvc["AdGroupService"]
+        AdGroupAdSvc["AdGroupAdService"]
+        BatchJobSvc["BatchJobService<br/><i>Async batch mutations</i>"]
+    end
+
+    subgraph "Metadata"
+        FieldSvc["GoogleAdsFieldService<br/><i>Schema introspection</i>"]
+    end
+
+    GAQL["GAQL Query"] --> Search
+    GAQL --> SearchStream
+    SearchStream -->|"Streaming rows"| Client["Client"]
+    Search -->|"Page tokens"| Client
+
+    FieldSvc -->|"Field metadata"| Client
+
+    style SearchStream fill:#34A853,color:#fff
+    style Search fill:#4285F4,color:#fff
+    style FieldSvc fill:#9C27B0,color:#fff
+    style BatchJobSvc fill:#FF6D00,color:#fff
+#+end_src
+
+For *read-only* use (which is what =adtap= does):
+
+- =GoogleAdsService.SearchStream= for data queries (preferred — no pagination overhead)
+- =GoogleAdsService.Search= for unreliable connections (page-based, resumable)
+- =GoogleAdsFieldService= for schema introspection (field metadata, compatibility)
+
+** REST Endpoint Mapping
+
+All services are accessible via REST (gRPC-JSON transcoding):
+
+| Operation         | Method | Endpoint                                                                 |
+|-------------------+--------+--------------------------------------------------------------------------|
+| Query (stream)    | POST   | =googleads.googleapis.com/v23/customers/{id}/googleAds:searchStream=     |
+| Query (paginated) | POST   | =googleads.googleapis.com/v23/customers/{id}/googleAds:search=           |
+| Field metadata    | GET    | =googleads.googleapis.com/v23/googleAdsFields/{field_name}=              |
+| Field search      | POST   | =googleads.googleapis.com/v23/googleAdsFields:search=                    |
+| Mutate campaign   | POST   | =googleads.googleapis.com/v23/customers/{id}/campaigns:mutate=           |
+
+Required headers for all requests:
+
+#+begin_src text :eval no
+Authorization: Bearer <access_token>
+developer-token: <developer_token>
+login-customer-id: <mcc_id>          # only if accessing via MCC
+Content-Type: application/json
+#+end_src
+
+* Reporting Reference — v23 Resource Taxonomy
+:PROPERTIES:
+:CUSTOM_ID: resource-taxonomy
+:END:
+
+The v23 field reference at [[https://developers.google.com/google-ads/api/fields/v23/overview]]
+divides resources into two categories: those with metrics and those without.
+
+** Resources with Metrics (Queryable for Performance Data)
+
+These are the workhorses for reporting and analysis.
+
+#+begin_src mermaid :file img/resources-with-metrics.png
+graph TB
+    subgraph "Core Entity Reports"
+        customer["customer"]
+        campaign["campaign"]
+        campaign_budget["campaign_budget"]
+        ad_group["ad_group"]
+        ad_group_ad["ad_group_ad"]
+        bidding_strategy["bidding_strategy"]
+    end
+
+    subgraph "Criterion & Targeting Views"
+        keyword_view["keyword_view"]
+        search_term_view["search_term_view"]
+        topic_view["topic_view"]
+        gender_view["gender_view"]
+        age_range_view["age_range_view"]
+        geographic_view["geographic_view"]
+        location_view["location_view"]
+        user_location_view["user_location_view"]
+        income_range_view["income_range_view"]
+        parental_status_view["parental_status_view"]
+        distance_view["distance_view"]
+    end
+
+    subgraph "Asset Reports"
+        asset_group["asset_group"]
+        asset_group_asset["asset_group_asset"]
+        ad_group_asset["ad_group_asset"]
+        campaign_asset["campaign_asset"]
+        customer_asset["customer_asset"]
+    end
+
+    subgraph "Placement & Content"
+        detail_placement_view["detail_placement_view"]
+        managed_placement_view["managed_placement_view"]
+        display_keyword_view["display_keyword_view"]
+        content_criterion_view["content_criterion_view"]
+    end
+
+    subgraph "Shopping & PMax"
+        shopping_performance_view["shopping_performance_view"]
+        shopping_product["shopping_product"]
+        performance_max_placement_view["performance_max_placement_view"]
+        product_group_view["product_group_view"]
+    end
+
+    subgraph "Other Views"
+        click_view["click_view"]
+        video["video"]
+        landing_page_view["landing_page_view"]
+        conversion_action["conversion_action"]
+        hotel_performance_view["hotel_performance_view"]
+        ad_schedule_view["ad_schedule_view"]
+    end
+
+    style customer fill:#4285F4,color:#fff
+    style campaign fill:#34A853,color:#fff
+    style ad_group fill:#FBBC04,color:#000
+    style ad_group_ad fill:#EA4335,color:#fff
+#+end_src
+
+** Resources without Metrics (Configuration & Structure)
+
+These expose entity attributes and relationships but no performance data.
+Used for account structure discovery, label management, change tracking, etc.
+
+Key examples: =ad_group_criterion=, =campaign_criterion=, =asset=, =audience=,
+=change_event=, =change_status=, =batch_job=, =billing_setup=, =campaign_draft=.
+
+Full list: [[https://developers.google.com/google-ads/api/fields/v23/overview][v23 Reporting Reference]]
+
+* The Query Flow — From GAQL to Data
+:PROPERTIES:
+:CUSTOM_ID: query-flow
+:END:
+
+#+begin_src mermaid :file img/query-flow.png
+sequenceDiagram
+    participant Agent as adtap / Agent
+    participant Auth as OAuth2 Token
+    participant Fields as GoogleAdsFieldService
+    participant Ads as GoogleAdsService
+
+    Note over Agent: Schema Discovery Phase
+    Agent->>Fields: GET /v23/googleAdsFields/campaign
+    Fields-->>Agent: {selectableWith, metrics, segments, attributeResources}
+
+    Agent->>Fields: POST /v23/googleAdsFields:search<br/>query: "WHERE name LIKE 'campaign.%'"
+    Fields-->>Agent: [{name, category, data_type, selectable, filterable, sortable}, ...]
+
+    Note over Agent: Query Execution Phase
+    Agent->>Auth: Refresh access_token (if expired)
+    Auth-->>Agent: Bearer token
+
+    Agent->>Ads: POST /v23/customers/{id}/googleAds:searchStream<br/>{"query": "SELECT campaign.name, metrics.clicks FROM campaign ..."}
+    Ads-->>Agent: Stream of result batches [{results: [{campaign: {...}, metrics: {...}}]}]
+
+    Note over Agent: Output Phase
+    Agent->>Agent: Format as table / json / jsonl / csv / parquet
+#+end_src
+
+* Key Metrics Reference
+:PROPERTIES:
+:CUSTOM_ID: metrics
+:END:
+
+Metrics are aggregated performance values. They always require date context.
+
+| Metric                           | Type   | Description                      | Unit           |
+|----------------------------------+--------+----------------------------------+----------------|
+| =metrics.impressions=            | INT64  | Times ad was shown               | count          |
+| =metrics.clicks=                 | INT64  | Clicks on ad                     | count          |
+| =metrics.cost_micros=            | INT64  | Total cost                       | micros (÷1e6)  |
+| =metrics.ctr=                    | DOUBLE | Click-through rate               | ratio          |
+| =metrics.average_cpc=            | DOUBLE | Average cost per click           | micros         |
+| =metrics.conversions=            | DOUBLE | Conversion actions               | count          |
+| =metrics.cost_per_conversion=    | DOUBLE | Cost per conversion              | micros         |
+| =metrics.conversion_rate=        | DOUBLE | Conversions ÷ interactions       | ratio          |
+| =metrics.average_cpm=            | DOUBLE | Average cost per 1000 impressions| micros         |
+| =metrics.search_impression_share=| DOUBLE | Share of eligible search impressions| ratio       |
+
+#+begin_quote
+*Micros convention*: Monetary values are in micros. =$1.50= → =1500000=.
+Always divide by =1,000,000= for human-readable currency.
+#+end_quote
+
+* Common Segments
+:PROPERTIES:
+:CUSTOM_ID: segments
+:END:
+
+| Segment                            | Effect on Output                                                |
+|------------------------------------+-----------------------------------------------------------------|
+| =segments.date=                    | One row per day per entity                                      |
+| =segments.device=                  | Split by DESKTOP, MOBILE, TABLET, etc.                          |
+| =segments.ad_network_type=         | SEARCH, SEARCH_PARTNERS, CONTENT, YOUTUBE_SEARCH, etc.          |
+| =segments.click_type=              | URL_CLICKS, BREADCRUMBS, SITELINKS, etc.                        |
+| =segments.conversion_action=       | Split by conversion action                                      |
+| =segments.hour=                    | Hour of day (0–23)                                              |
+| =segments.day_of_week=             | MONDAY through SUNDAY                                           |
+| =segments.slot=                    | Ad slot position                                                |
+
+Full segment reference: [[https://developers.google.com/google-ads/api/fields/v23/segments]]
+
+* Date Filtering
+:PROPERTIES:
+:CUSTOM_ID: date-filtering
+:END:
+
+GAQL provides predefined date ranges via =DURING= and explicit ranges.
+
+#+begin_src sql :eval no
+-- Predefined range
+WHERE segments.date DURING LAST_30_DAYS
+
+-- Explicit range
+WHERE segments.date BETWEEN '2026-01-01' AND '2026-01-31'
+
+-- Single day
+WHERE segments.date = '2026-02-27'
+#+end_src
+
+Predefined =DURING= values: =TODAY=, =YESTERDAY=, =LAST_7_DAYS=,
+=LAST_14_DAYS=, =LAST_30_DAYS=, =THIS_MONTH=, =LAST_MONTH=,
+=THIS_WEEK_SUN_TODAY=, =THIS_WEEK_MON_TODAY=, =LAST_WEEK_SUN_SAT=,
+=LAST_WEEK_MON_SUN=, =LAST_BUSINESS_WEEK=.
+
+* Authentication Model
+:PROPERTIES:
+:CUSTOM_ID: authentication
+:END:
+
+#+begin_src mermaid :file img/auth-flow.png
+graph TD
+    subgraph "One-Time Setup"
+        DevToken["Developer Token<br/><i>From Google Ads API Center</i>"]
+        CloudProject["Google Cloud Project<br/><i>Enable 'Google Ads API'</i>"]
+        OAuthClient["OAuth2 Client ID<br/><i>Desktop application type</i>"]
+    end
+
+    subgraph "Per-Session Auth"
+        Consent["User consent via browser"]
+        AuthCode["Authorization code"]
+        RefreshToken["Refresh token<br/><i>Persisted in credentials file</i>"]
+        AccessToken["Access token<br/><i>Short-lived, auto-refreshed</i>"]
+    end
+
+    subgraph "API Call Headers"
+        H1["Authorization: Bearer &lt;access_token&gt;"]
+        H2["developer-token: &lt;dev_token&gt;"]
+        H3["login-customer-id: &lt;mcc_id&gt;"]
+    end
+
+    DevToken --> H2
+    OAuthClient --> Consent
+    Consent --> AuthCode
+    AuthCode --> RefreshToken
+    RefreshToken -->|"Auto-refresh"| AccessToken
+    AccessToken --> H1
+
+    style DevToken fill:#FBBC04,color:#000
+    style RefreshToken fill:#34A853,color:#fff
+    style AccessToken fill:#4285F4,color:#fff
+#+end_src
+
+* MCC (Manager Account) Hierarchy
+:PROPERTIES:
+:CUSTOM_ID: mcc
+:END:
+
+Manager accounts (MCCs) can manage other accounts. The =login-customer-id= header
+specifies which MCC you're authenticating through.
+
+#+begin_src mermaid :file img/mcc-hierarchy.png
+graph TD
+    MCC_Top["Top-Level MCC<br/><code>login-customer-id</code>"]
+    MCC_Sub["Sub-MCC<br/><i>Regional or team</i>"]
+    Acct1["Client Account A<br/><code>customer-id</code>"]
+    Acct2["Client Account B<br/><code>customer-id</code>"]
+    Acct3["Client Account C<br/><code>customer-id</code>"]
+
+    MCC_Top --> MCC_Sub
+    MCC_Top --> Acct1
+    MCC_Sub --> Acct2
+    MCC_Sub --> Acct3
+
+    style MCC_Top fill:#4285F4,color:#fff
+    style MCC_Sub fill:#7BAAF7,color:#fff
+#+end_src
+
+Discover accessible accounts:
+
+#+begin_src sql :eval no
+-- List all accessible customer accounts
+SELECT
+  customer_client.client_customer,
+  customer_client.descriptive_name,
+  customer_client.level,
+  customer_client.manager,
+  customer_client.status
+FROM customer_client
+WHERE customer_client.level <= 1
+#+end_src
+
+* Client Libraries
+:PROPERTIES:
+:CUSTOM_ID: client-libraries
+:END:
+
+Official Google client libraries for the Ads API:
+
+| Language | Source                                                                      | Distribution                                                                      | Examples                                                                                                        |
+|----------+-----------------------------------------------------------------------------+-----------------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------------------|
+| [[https://developers.google.com/google-ads/api/docs/client-libs/java][Java]]     | [[https://github.com/googleads/google-ads-java/][google-ads-java]]     | [[https://github.com/googleads/google-ads-java/#maven-artifacts][Maven]], [[https://github.com/googleads/google-ads-java/releases][tar.gz]]      | [[https://github.com/googleads/google-ads-java/blob/HEAD/google-ads-examples/src/main/java/com/google/ads/googleads/examples][GitHub]] |
+| [[https://developers.google.com/google-ads/api/docs/client-libs/dotnet][.NET]]     | [[https://github.com/googleads/google-ads-dotnet][google-ads-dotnet]]   | [[https://www.nuget.org/packages/Google.Ads.GoogleAds][nuget]], [[https://github.com/googleads/google-ads-dotnet/releases][tar.gz/zip]]        | [[https://github.com/googleads/google-ads-dotnet/blob/main/Google.Ads.GoogleAds/examples][GitHub]]               |
+| [[https://developers.google.com/google-ads/api/docs/client-libs/php][PHP]]      | [[https://github.com/googleads/google-ads-php][google-ads-php]]       | [[https://github.com/googleads/google-ads-php/releases][tar.gz]]                     | [[https://github.com/googleads/google-ads-php/blob/HEAD/examples][GitHub]]                                       |
+| [[https://developers.google.com/google-ads/api/docs/client-libs/python][Python]]   | [[https://github.com/googleads/google-ads-python][google-ads-python]]   | [[https://github.com/googleads/google-ads-python/releases][tar.gz/zip]]               | [[https://github.com/googleads/google-ads-python/tree/HEAD/examples][GitHub]]                                     |
+| [[https://developers.google.com/google-ads/api/docs/client-libs/ruby][Ruby]]     | [[https://github.com/googleads/google-ads-ruby/][google-ads-ruby]]     | [[https://github.com/googleads/google-ads-ruby/releases][gem, tar.gz/zip]]           | [[https://github.com/googleads/google-ads-ruby/tree/HEAD/examples][GitHub]]                                       |
+| [[https://developers.google.com/google-ads/api/docs/client-libs/perl][Perl]]     | [[https://github.com/googleads/google-ads-perl/][google-ads-perl]]     | [[https://github.com/googleads/google-ads-perl/releases][tar.gz/zip]]               | [[https://github.com/googleads/google-ads-perl/blob/HEAD/examples][GitHub]]                                       |
+
+Community-maintained (not officially supported):
+
+| Language   | Distribution                                           |
+|------------+--------------------------------------------------------|
+| Node.js    | [[https://www.npmjs.com/package/google-ads-api][npm]]   |
+| Go         | [[https://github.com/shenzhencenter/google-ads-pb][google-ads-pb]] |
+
+#+begin_quote
+*=adtap= uses neither.* It calls the REST API directly via =net/http=, avoiding
+generated client stubs entirely. See the [[file:meta-prompt.md][adtap meta-prompt]] for rationale.
+#+end_quote
+
+* GAQL Cookbook — Common Queries
+:PROPERTIES:
+:CUSTOM_ID: cookbook
+:END:
+
+** Campaign Performance (Last 30 Days)
+
+#+begin_src sql :eval no
+SELECT
+  campaign.id,
+  campaign.name,
+  campaign.status,
+  campaign.advertising_channel_type,
+  campaign_budget.amount_micros,
+  metrics.impressions,
+  metrics.clicks,
+  metrics.ctr,
+  metrics.average_cpc,
+  metrics.cost_micros,
+  metrics.conversions,
+  metrics.cost_per_conversion
+FROM campaign
+WHERE segments.date DURING LAST_30_DAYS
+  AND campaign.status != 'REMOVED'
+ORDER BY metrics.cost_micros DESC
+#+end_src
+
+** Top Keywords by Clicks
+
+#+begin_src sql :eval no
+SELECT
+  ad_group.name,
+  ad_group_criterion.keyword.text,
+  ad_group_criterion.keyword.match_type,
+  metrics.impressions,
+  metrics.clicks,
+  metrics.ctr,
+  metrics.average_cpc,
+  metrics.conversions
+FROM keyword_view
+WHERE segments.date DURING LAST_30_DAYS
+ORDER BY metrics.clicks DESC
+LIMIT 100
+#+end_src
+
+** Search Terms Report
+
+#+begin_src sql :eval no
+SELECT
+  campaign.name,
+  ad_group.name,
+  search_term_view.search_term,
+  search_term_view.status,
+  metrics.impressions,
+  metrics.clicks,
+  metrics.cost_micros,
+  metrics.conversions
+FROM search_term_view
+WHERE segments.date DURING LAST_7_DAYS
+ORDER BY metrics.impressions DESC
+LIMIT 200
+#+end_src
+
+** Account Hierarchy Discovery
+
+#+begin_src sql :eval no
+SELECT
+  customer_client.client_customer,
+  customer_client.descriptive_name,
+  customer_client.level,
+  customer_client.manager,
+  customer_client.status,
+  customer_client.currency_code,
+  customer_client.time_zone
+FROM customer_client
+ORDER BY customer_client.level
+#+end_src
+
+** Schema Introspection via GoogleAdsFieldService
+
+#+begin_src sql :eval no
+-- All fields for the campaign resource
+SELECT
+  name,
+  category,
+  data_type,
+  selectable,
+  filterable,
+  sortable
+FROM google_ads_fields
+WHERE name LIKE 'campaign.%'
+
+-- Discover which metrics work with ad_group
+SELECT
+  name,
+  data_type
+FROM google_ads_fields
+WHERE name LIKE 'metrics.%'
+  AND selectable_with CONTAINS 'ad_group'
+#+end_src
+
+* Key Constraints & Gotchas
+:PROPERTIES:
+:CUSTOM_ID: gotchas
+:END:
+
+1. *GAQL is not SQL.* No JOINs, no subqueries, no =GROUP BY=, no =COUNT(*)=.
+2. *One resource per query.* The =FROM= clause accepts exactly one resource.
+3. *Field compatibility is enforced.* Not all fields/metrics/segments can coexist. Check =selectableWith= via =GoogleAdsFieldService=.
+4. *Metrics require date context.* Either implicit (last 30 days default in some contexts) or explicit via =segments.date= in =WHERE=.
+5. *Removed entities are included by default.* Always add =WHERE status != 'REMOVED'= unless you want them.
+6. *Rate limits.* Basic access: ~15,000 requests/day. Standard access: higher. Apply via API Center.
+7. *Micros everywhere.* All monetary values are in micros (÷1,000,000 for currency).
+8. *=get= requests are limited to 1,000/day.* Use =Search=/=SearchStream= for real work.
+9. *=click_view= requires single-day filter.* You cannot query =click_view= for a date range.
+10. *Concurrent mutations cause errors.* =DatabaseError.CONCURRENT_MODIFICATION_ERROR= — but =adtap= is read-only so this doesn't apply.
+
+* Pipeline Position
+:PROPERTIES:
+:CUSTOM_ID: pipeline
+:END:
+
+#+begin_src mermaid :file img/pipeline.png
+graph LR
+    subgraph "Extract"
+        AT["adtap<br/><i>GAQL → jsonl/parquet</i>"]
+    end
+
+    subgraph "Stage"
+        FS["Filesystem<br/><i>.adtap/exports/</i>"]
+        S3["Object Store<br/><i>S3/GCS stage</i>"]
+    end
+
+    subgraph "Persist"
+        SF["Snowflake<br/><i>COPY INTO</i>"]
+    end
+
+    subgraph "Transform"
+        DBT["dbt<br/><i>Models & tests</i>"]
+    end
+
+    subgraph "Analyze"
+        ML["ML / BI<br/><i>Snowpark, Looker, etc.</i>"]
+    end
+
+    AT --> FS
+    FS --> S3
+    S3 --> SF
+    SF --> DBT
+    DBT --> ML
+
+    style AT fill:#EA4335,color:#fff
+    style SF fill:#29B5E8,color:#fff
+    style DBT fill:#FF694B,color:#fff
+#+end_src
+
+See also: =adwall=, =adbudget= under =aygp-dr= for related tooling.
+
+* Local Variables                                                  :noexport:
+# Local Variables:
+# org-confirm-babel-evaluate: nil
+# End:

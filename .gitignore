@@ -60,11 +60,19 @@ data/
 api-responses/
 *.api-response.json
 
-# Gastown transient directories
+# Gastown transient directories (ignore during development)
 witness/
 refinery/
 mayor/
+polecats/
+crew/
 
-# Keep beads config but ignore db
+# Beads - track config, ignore runtime data
 .beads/*.db
 .beads/*.db-*
+.beads/*.db-journal
+
+# CPRR - track conjectures (similar to beads)
+# .cprr/ is tracked
+.cprr/*.db
+.cprr/*.db-*
