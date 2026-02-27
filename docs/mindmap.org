@@ -1,0 +1,162 @@
+#+TITLE: ADTAP Mind Map - Google Ads API Exploration
+#+AUTHOR: aygp-dr
+#+DATE: 2026-02-27
+
+* Mind Map: Google Ads API Exploration Toolkit
+
+#+begin_src mermaid :file images/mindmap.png
+mindmap
+  root((ADTAP))
+    API Access
+      Authentication
+        OAuth 2.0
+        Service Accounts
+        Developer Token
+      Transports
+        gRPC / Protobuf
+        REST / JSON
+    Query Language
+      GAQL
+        SELECT
+        FROM
+        WHERE
+        Segments
+        Metrics
+      Tools
+        Query Builder
+        Query Validator
+    Developer Tools
+      AI Assistant
+        Gemini CLI
+        MCP Server
+      Exploration
+        API Explorer
+        Client Libraries
+    Documentation
+      Entity Diagrams
+        ERD
+        State Machines
+        Sequences
+      Getting Started
+        GAQL Guide
+        REST Guide
+    Use Cases
+      Read-Only
+        Campaign History
+        Change Auditing
+        Performance Reports
+      Non-Goals
+        Mutations
+        Pipelines
+        Production
+#+end_src
+
+* Detailed Mind Map: API Structure
+
+#+begin_src mermaid :file images/mindmap-api.png
+mindmap
+  root((Google Ads API v23))
+    Entities
+      Customer
+      Campaign
+      AdGroup
+      Ad
+      Asset
+    Services
+      GoogleAdsService
+        Search
+        SearchStream
+        Mutate ❌
+      CampaignService
+      AdGroupService
+      CustomerService
+    Resources
+      With Metrics
+        campaign
+        ad_group
+        ad_group_ad
+      Without Metrics
+        ad
+        asset
+        label
+    Data Types
+      Enums
+        CampaignStatus
+        AdGroupStatus
+      Messages
+        Campaign
+        AdGroup
+        Metrics
+#+end_src
+
+* Developer Toolkit Overview
+
+#+begin_src mermaid :file images/mindmap-tools.png
+mindmap
+  root((Developer Toolkit))
+    AI Assistants
+      MCP Server
+        Claude Integration
+        Search Tool
+        List Customers
+      Gemini CLI
+        Natural Language
+        Code Generation
+        API Execution
+    Query Tools
+      Query Builder
+        Interactive
+        Field Selection
+        Clause Construction
+      Query Validator
+        Syntax Check
+        Compatibility
+    Exploration
+      API Explorer
+        REST Interface
+        Try Requests
+      Client Libraries
+        Python
+        PHP
+        Go protobuf
+#+end_src
+
+* Authentication Workflows
+
+#+begin_src mermaid :file images/mindmap-auth.png
+mindmap
+  root((Authentication))
+    Interactive
+      OAuth 2.0
+        User Consent
+        Access Token
+        Refresh Token
+    Automated
+      Service Account
+        JSON Key
+        Domain Delegation
+        Scheduled Tasks
+    Credentials
+      Developer Token
+        Test Account
+        Basic Access
+        Standard Access
+      GCP Project
+        Enable APIs
+        Billing
+#+end_src
+
+* Links to Resources
+
+| Area | Resource | Link |
+|------+----------+------|
+| AI | MCP Server | [[https://developers.google.com/google-ads/api/docs/developer-toolkit/mcp-server]] |
+| AI | AI Assistant | [[https://developers.google.com/google-ads/api/docs/developer-toolkit/ai-assistant]] |
+| Query | Query Builder | [[https://developers.google.com/google-ads/api/docs/developer-toolkit/gaa-query-builder]] |
+| Query | Query Validator | [[https://developers.google.com/google-ads/api/docs/developer-toolkit/gaa-query-validator]] |
+| Explore | API Explorer | [[https://developers.google.com/google-ads/api/docs/developer-toolkit/api-explorer]] |
+| Auth | Service Accounts | [[https://developers.google.com/google-ads/api/docs/oauth/service-accounts]] |
+| Video | GAQL Structure | [[https://developers.google.com/google-ads/api/videos/catalog/gaql-2]] |
+| Video | REST Intro | [[https://developers.google.com/google-ads/api/videos/catalog/working-with-rest-1]] |
+| Video | Change History | [[https://developers.google.com/google-ads/api/videos/catalog/change-history-1]] |
+| Video | Best Practices | [[https://developers.google.com/google-ads/api/videos/catalog/best-practices-1]] |
