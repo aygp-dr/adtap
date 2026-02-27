@@ -1,0 +1,56 @@
+# Environment files - NEVER commit secrets
+.env
+.env.*
+!.env.template
+!.env.example
+
+# Common environment variations
+.env.local
+.env.dev
+.env.development
+.env.staging
+.env.stage
+.env.prod
+.env.production
+.env.test
+.env.testing
+
+# Credentials
+credentials.json
+*.pem
+*.key
+service-account*.json
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+env/
+.eggs/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

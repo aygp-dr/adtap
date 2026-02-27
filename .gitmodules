@@ -1,0 +1,9 @@
+[submodule "vendor/google-ads-mcp"]
+	path = vendor/google-ads-mcp
+	url = https://github.com/googleads/google-ads-mcp.git
+[submodule "vendor/google-ads-api-developer-assistant"]
+	path = vendor/google-ads-api-developer-assistant
+	url = https://github.com/googleads/google-ads-api-developer-assistant.git
+[submodule "vendor/google-ads-pb"]
+	path = vendor/google-ads-pb
+	url = https://github.com/shenzhencenter/google-ads-pb.git

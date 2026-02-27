@@ -1,0 +1,26 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Org-mode files
+*.org text diff=org
+
+# Markdown
+*.md text diff=markdown
+
+# Shell scripts
+*.sh text eol=lf
+
+# Python
+*.py text diff=python
+
+# JSON
+*.json text
+
+# Proto files
+*.proto text
+
+# Ignore generated files in diffs
+*.pb.go -diff
+
+# Submodules
+vendor/** linguist-vendored
