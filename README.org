@@ -2,6 +2,18 @@
 #+AUTHOR: aygp-dr
 #+DATE: 2026-02-27
 
+#+HTML: <p align="center">
+#+HTML: <a href="https://developers.google.com/google-ads/api/reference/rpc/v23/overview"><img src="https://img.shields.io/badge/Google%20Ads%20API-v23-blue" alt="Google Ads API v23"></a>
+#+HTML: <a href="https://golang.org"><img src="https://img.shields.io/badge/Go-1.22+-00ADD8?logo=go" alt="Go 1.22+"></a>
+#+HTML: <a href="LICENSE"><img src="https://img.shields.io/badge/License-Apache%202.0-green" alt="Apache 2.0"></a>
+#+HTML: <a href="https://clig.dev"><img src="https://img.shields.io/badge/CLI-clig.dev-orange" alt="clig.dev"></a>
+#+HTML: <img src="https://img.shields.io/badge/Mode-Read--Only-red" alt="Read-Only">
+#+HTML: </p>
+
+#+begin_quote
+*Tap the Google Ads API from your terminal.* Read-only exploration, documentation, and pattern discovery.
+#+end_quote
+
 * Overview
 
 ADTAP provides tools, documentation, and patterns for working with the Google Ads API v23.
