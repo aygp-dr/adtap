@@ -1,0 +1,152 @@
+#+TITLE: ADTAP Stakeholder Overview
+#+AUTHOR: aygp-dr
+#+DATE: 2026-02-27
+#+OPTIONS: toc:2 num:nil
+
+* Executive Summary
+
+ADTAP (Ads API Tools And Patterns) is a *read-only exploration toolkit* for
+understanding and documenting Google Ads account data through the Google Ads
+API v23.
+
+** What We Do
+
+- Explore campaign structures and hierarchies
+- Review historical performance data
+- Examine change history and audit trails
+- Document entity relationships
+- Prototype query patterns
+
+** What We Do NOT Do
+
+- Modify campaigns, ads, or budgets
+- Automate campaign management
+- Build production data pipelines
+
+* Use Cases
+
+** 1. Campaign History Exploration
+
+Explore the history and evolution of campaigns without making changes.
+
+#+begin_src sql
+-- Example: View campaign performance over time
+SELECT
+  campaign.id,
+  campaign.name,
+  campaign.status,
+  segments.date,
+  metrics.impressions,
+  metrics.clicks,
+  metrics.cost_micros
+FROM campaign
+WHERE segments.date DURING LAST_30_DAYS
+ORDER BY segments.date DESC
+#+end_src
+
+** 2. Change History Auditing
+
+Review what changes were made, when, and by whom using the Change History API.
+
+Reference: [[https://developers.google.com/google-ads/api/videos/catalog/change-history-1][Change History Video - The Basics]]
+
+*** Key Concepts
+
+| Resource | Purpose |
+|----------+---------|
+| ChangeStatus | Track resource modification timestamps |
+| ChangeEvent | Detailed change records with before/after states |
+
+*** Example Query
+
+#+begin_src sql
+-- Example: View recent changes to campaigns
+SELECT
+  change_event.change_date_time,
+  change_event.change_resource_type,
+  change_event.change_resource_name,
+  change_event.user_email,
+  change_event.client_type,
+  change_event.old_resource,
+  change_event.new_resource
+FROM change_event
+WHERE change_event.change_date_time DURING LAST_7_DAYS
+  AND change_event.change_resource_type = 'CAMPAIGN'
+ORDER BY change_event.change_date_time DESC
+#+end_src
+
+** 3. Account Structure Analysis
+
+Understand the hierarchy and relationships between entities.
+
+#+begin_example
+Customer (Manager Account)
+├── Campaign A
+│   ├── AdGroup 1
+│   │   ├── Ad 1.1
+│   │   └── Ad 1.2
+│   └── AdGroup 2
+│       └── Ad 2.1
+└── Campaign B
+    └── AdGroup 3
+        └── Ad 3.1
+#+end_example
+
+** 4. Performance Reporting
+
+Generate read-only reports on campaign performance.
+
+#+begin_src sql
+-- Example: Top performing campaigns by conversions
+SELECT
+  campaign.id,
+  campaign.name,
+  metrics.conversions,
+  metrics.conversions_value,
+  metrics.cost_micros,
+  metrics.ctr
+FROM campaign
+WHERE segments.date DURING LAST_30_DAYS
+  AND campaign.status = 'ENABLED'
+ORDER BY metrics.conversions DESC
+LIMIT 10
+#+end_src
+
+* API Retrieval Methods
+
+Understanding when to use each method (for exploration, not production):
+
+| Method | Best For | Notes |
+|--------+----------+-------|
+| =SearchStream= | Large datasets | Streaming results, no pagination |
+| =Search= | Smaller datasets | Manual pagination control |
+| =Get= | Single resources | Direct ID lookup |
+
+Reference: [[https://developers.google.com/google-ads/api/videos/catalog/best-practices-1][Best Practices for Retrieving Information]]
+
+* Exploration Workflow
+
+#+begin_src mermaid
+graph LR
+    A[Identify Question] --> B[Construct GAQL Query]
+    B --> C[Execute via Search/SearchStream]
+    C --> D[Analyze Results]
+    D --> E[Document Findings]
+    E --> F{More Questions?}
+    F -->|Yes| A
+    F -->|No| G[Share Insights]
+#+end_src
+
+* Key Principles
+
+1. *Read-Only*: We observe, we don't modify
+2. *Exploration*: Learning and understanding, not production
+3. *Documentation*: Capture patterns and relationships
+4. *Safety*: No risk to live campaigns
+
+* Resources
+
+- [[https://developers.google.com/google-ads/api/reference/rpc/v23/overview][Google Ads API v23 Reference]]
+- [[https://developers.google.com/google-ads/api/videos/catalog/change-history-1][Change History API Video]]
+- [[https://developers.google.com/google-ads/api/videos/catalog/best-practices-1][Best Practices Video]]
+- [[file:../../google-ads-api-v23-diagrams.org][Entity Diagrams (ERD, State, Sequence)]]
