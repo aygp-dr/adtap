@@ -1,0 +1,262 @@
+#+TITLE: Alternatives and Integrations for Google Ads Data
+#+AUTHOR: aygp-dr
+#+DATE: 2026-02-27
+#+OPTIONS: toc:2
+
+* Overview
+
+Google provides multiple products for automating and analyzing Google Ads data.
+ADTAP focuses on the API approach, but for read-only analysis, other options
+may be more appropriate depending on your use case.
+
+* Decision Matrix
+
+| Scenario | Recommendation | ADTAP Fit |
+|----------+--------------+-----------|
+| Developer building custom software | Google Ads API | Primary use case |
+| Developer, no infrastructure management | Google Ads Scripts | Alternative |
+| Non-developer learning automation | Google Ads Scripts | N/A |
+| Data analyst downloading reports | BigQuery Data Transfer | Complement |
+| Bulk management, no code | Automated rules, Editor | N/A |
+
+* BigQuery Data Transfer Service
+:PROPERTIES:
+:CUSTOM_ID: bigquery
+:END:
+
+For pure data analysis, BigQuery Data Transfer may be simpler than direct API access.
+
+Reference: [[https://cloud.google.com/bigquery/docs/google-ads-transfer][BigQuery Data Transfer for Google Ads]]
+
+** When to Use BigQuery Instead of adtap
+
+| Use Case | BigQuery | adtap |
+|----------+----------+-------|
+| Historical reporting | Better (scheduled, managed) | Manual exports |
+| Ad-hoc exploration | Slower setup | Faster iteration |
+| SQL-based analysis | Native | Export first |
+| Real-time data | Delayed (up to 24h) | Near real-time |
+| Schema changes | Automatic | Manual update |
+| Infrastructure | Managed | Self-managed |
+
+** BigQuery Transfer Configuration
+
+#+begin_src bash
+# Enable the BigQuery Data Transfer API
+gcloud services enable bigquerydatatransfer.googleapis.com
+
+# Create a transfer config
+bq mk --transfer_config \
+  --project_id=YOUR_PROJECT \
+  --data_source=google_ads \
+  --display_name="Google Ads Transfer" \
+  --target_dataset=google_ads_data \
+  --params='{"customer_id":"123-456-7890"}'
+#+end_src
+
+** BigQuery Schema
+
+BigQuery creates tables matching Google Ads report types:
+
+| Table | Description |
+|-------+-------------|
+| =p_Campaign_*= | Campaign-level data (partitioned) |
+| =p_AdGroup_*= | Ad group-level data |
+| =p_Ad_*= | Ad-level data |
+| =p_Keyword_*= | Keyword performance |
+| =p_SearchQueryStats_*= | Search terms |
+
+** Combining adtap with BigQuery
+
+#+begin_src mermaid :file img/bigquery-integration.png
+graph LR
+    subgraph "Real-time Exploration"
+        AT["adtap<br/><i>GAQL queries</i>"]
+    end
+
+    subgraph "Historical Analysis"
+        BQ["BigQuery<br/><i>Data Transfer</i>"]
+    end
+
+    subgraph "Analysis"
+        SQL["SQL Queries"]
+        Looker["Looker / BI"]
+        Notebook["Jupyter / Colab"]
+    end
+
+    AT -->|"jsonl/parquet"| SQL
+    BQ -->|"native tables"| SQL
+    SQL --> Looker
+    SQL --> Notebook
+
+    style AT fill:#EA4335,color:#fff
+    style BQ fill:#4285F4,color:#fff
+#+end_src
+
+** Environment Variables for BigQuery
+
+Add to =.env.template= for BigQuery integration:
+
+#+begin_src bash
+# BigQuery Data Transfer (alternative to direct API)
+BIGQUERY_PROJECT_ID=your-project-id
+BIGQUERY_DATASET=google_ads_data
+BIGQUERY_LOCATION=US
+#+end_src
+
+* Google Ads Scripts
+:PROPERTIES:
+:CUSTOM_ID: scripts
+:END:
+
+Google Ads Scripts run JavaScript in-browser, no infrastructure needed.
+
+Reference: [[https://developers.google.com/google-ads/scripts][Google Ads Scripts]]
+
+** When to Use Scripts Instead of adtap
+
+| Capability | Scripts | adtap |
+|------------+---------+-------|
+| Language | JavaScript | Go (CLI) |
+| Infrastructure | None (in-browser) | Self-managed |
+| Scheduling | Built-in | External (cron) |
+| Mutations | Supported | Never (read-only) |
+| Local processing | No | Yes |
+| CI/CD integration | Limited | Full |
+
+** Example Script for Data Export
+
+#+begin_src javascript
+// Export campaign data to Google Sheets
+function main() {
+  var campaigns = AdsApp.campaigns()
+    .withCondition("Status = ENABLED")
+    .get();
+
+  var sheet = SpreadsheetApp.openById("YOUR_SHEET_ID").getActiveSheet();
+  sheet.clear();
+  sheet.appendRow(["Campaign", "Clicks", "Impressions", "Cost"]);
+
+  while (campaigns.hasNext()) {
+    var campaign = campaigns.next();
+    var stats = campaign.getStatsFor("LAST_30_DAYS");
+    sheet.appendRow([
+      campaign.getName(),
+      stats.getClicks(),
+      stats.getImpressions(),
+      stats.getCost()
+    ]);
+  }
+}
+#+end_src
+
+* Automated Rules
+:PROPERTIES:
+:CUSTOM_ID: rules
+:END:
+
+For non-developers, automated rules provide no-code automation.
+
+Reference: [[https://support.google.com/google-ads/answer/2472725][Automated Rules Help]]
+
+** Capabilities (for Reference)
+
+- Schedule bid changes
+- Pause/enable campaigns based on conditions
+- Send email alerts
+- NOT suitable for data extraction (use BigQuery or adtap)
+
+* Google Ads Editor
+:PROPERTIES:
+:CUSTOM_ID: editor
+:END:
+
+Desktop application for bulk management.
+
+Reference: [[https://ads.google.com/intl/en_us/home/tools/ads-editor/][Google Ads Editor]]
+
+** Capabilities
+
+- Bulk uploads/downloads
+- Offline editing
+- Copy/paste across accounts
+- NOT programmable (use adtap or Scripts for automation)
+
+* Recommendation for ADTAP Users
+:PROPERTIES:
+:CUSTOM_ID: recommendation
+:END:
+
+** Primary: adtap + BigQuery
+
+For comprehensive read-only analysis:
+
+1. *BigQuery Data Transfer* for historical data warehouse
+2. *adtap* for ad-hoc exploration and real-time queries
+3. *dbt* for transformations on BigQuery data
+
+#+begin_src mermaid :file img/recommended-stack.png
+graph TB
+    subgraph "Data Sources"
+        API["Google Ads API<br/><i>via adtap</i>"]
+        BQT["BigQuery Transfer<br/><i>scheduled</i>"]
+    end
+
+    subgraph "Storage"
+        BQ["BigQuery<br/><i>data warehouse</i>"]
+        Local["Local Files<br/><i>jsonl/parquet</i>"]
+    end
+
+    subgraph "Transform"
+        DBT["dbt<br/><i>models</i>"]
+    end
+
+    subgraph "Analyze"
+        Looker["Looker"]
+        Notebooks["Notebooks"]
+        Custom["Custom Apps"]
+    end
+
+    API -->|"real-time"| Local
+    BQT -->|"scheduled"| BQ
+    Local -->|"load"| BQ
+    BQ --> DBT
+    DBT --> Looker
+    DBT --> Notebooks
+    Local --> Custom
+
+    style API fill:#EA4335,color:#fff
+    style BQT fill:#4285F4,color:#fff
+    style BQ fill:#4285F4,color:#fff
+    style DBT fill:#FF694B,color:#fff
+#+end_src
+
+** Configuration Hooks
+
+ADTAP should support configuration for downstream integration:
+
+#+begin_src toml
+# .adtap/config.toml
+
+[export]
+format = "jsonl"           # default export format
+dest = ".adtap/exports"
+
+[bigquery]
+enabled = false            # set true to auto-load exports
+project = ""
+dataset = "google_ads_staging"
+location = "US"
+
+[hooks]
+post_export = ""           # command to run after export
+# Example: "bq load --source_format=NEWLINE_DELIMITED_JSON ${dataset}.${table} ${file}"
+#+end_src
+
+* Links
+
+- [[https://cloud.google.com/bigquery/docs/google-ads-transfer][BigQuery Data Transfer for Google Ads]]
+- [[https://developers.google.com/google-ads/scripts][Google Ads Scripts]]
+- [[https://support.google.com/google-ads/answer/2472725][Automated Rules]]
+- [[https://ads.google.com/intl/en_us/home/tools/ads-editor/][Google Ads Editor]]
+- [[https://developers.google.com/google-ads/api/docs/concepts/overview][Google Ads API Overview]]
