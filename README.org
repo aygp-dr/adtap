@@ -223,11 +223,33 @@ See [[https://developers.google.com/google-ads/api/docs/sunset-dates][Deprecatio
 
 * Resources
 
+** API Reference
+
 - [[https://developers.google.com/google-ads/api/reference/rpc/v23/overview][Google Ads API v23 Reference]]
 - [[https://github.com/googleapis/googleapis/tree/master/google/ads/googleads][Official Protobuf Definitions]]
-- [[https://github.com/shenzhencenter/google-ads-pb][Go Protobuf Implementation]]
+
+** Developer Toolkit
+
+| Tool | Description | Link |
+|------+-------------+------|
+| AI Assistant | Gemini CLI extension for natural language | [[https://developers.google.com/google-ads/api/docs/developer-toolkit/ai-assistant][Link]] |
+| MCP Server | Claude/LLM integration for API access | [[https://developers.google.com/google-ads/api/docs/developer-toolkit/mcp-server][Link]] |
+| API Explorer | Interactive REST API exploration | [[https://developers.google.com/google-ads/api/docs/developer-toolkit/api-explorer][Link]] |
+| Query Builder | Build GAQL queries interactively | [[https://developers.google.com/google-ads/api/docs/developer-toolkit/gaa-query-builder][Link]] |
+| Query Validator | Validate GAQL query syntax | [[https://developers.google.com/google-ads/api/docs/developer-toolkit/gaa-query-validator][Link]] |
+
+** Client Libraries
+
 - [[https://github.com/googleads/google-ads-python][Python Client Library]]
+- [[https://github.com/shenzhencenter/google-ads-pb][Go Protobuf Implementation]]
 - [[https://github.com/googleads/google-ads-mcp][Google Ads MCP Server]]
+
+** Documentation in This Repo
+
+- [[file:docs/mindmap.org][Mind Map - Visual overview of all areas]]
+- [[file:docs/getting-started-gaql.org][Getting Started: GAQL]]
+- [[file:docs/getting-started-rest.org][Getting Started: REST API]]
+- [[file:docs/google-ads-api-v23-diagrams.org][Entity Diagrams (ERD, State, Sequence)]]
 
 * License
 

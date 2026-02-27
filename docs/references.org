@@ -28,8 +28,16 @@ git log --oneline -- google/ads/googleads/v10
 
 ** Official Client Libraries
 
-- [[https://github.com/googleads/google-ads-python][Python Client Library]]
-- [[https://github.com/googleads/google-ads-php][PHP Client Library]]
+Reference: [[https://developers.google.com/google-ads/api/docs/client-libs][Client Libraries Overview]]
+
+| Language | Source | Distribution | Examples |
+|----------+--------+--------------+----------|
+| [[https://developers.google.com/google-ads/api/docs/client-libs/java][Java]] | [[https://github.com/googleads/google-ads-java][google-ads-java]] | [[https://github.com/googleads/google-ads-java/#maven-artifacts][Maven]] | [[https://github.com/googleads/google-ads-java/blob/HEAD/google-ads-examples/src/main/java/com/google/ads/googleads/examples][Examples]] |
+| [[https://developers.google.com/google-ads/api/docs/client-libs/dotnet][.NET]] | [[https://github.com/googleads/google-ads-dotnet][google-ads-dotnet]] | [[https://www.nuget.org/packages/Google.Ads.GoogleAds][NuGet]] | [[https://github.com/googleads/google-ads-dotnet/blob/main/Google.Ads.GoogleAds/examples][Examples]] |
+| [[https://developers.google.com/google-ads/api/docs/client-libs/php][PHP]] | [[https://github.com/googleads/google-ads-php][google-ads-php]] | [[https://github.com/googleads/google-ads-php/releases][Releases]] | [[https://github.com/googleads/google-ads-php/blob/HEAD/examples][Examples]] |
+| [[https://developers.google.com/google-ads/api/docs/client-libs/python][Python]] | [[https://github.com/googleads/google-ads-python][google-ads-python]] | [[https://github.com/googleads/google-ads-python/releases][Releases]] | [[https://github.com/googleads/google-ads-python/tree/HEAD/examples][Examples]] |
+| [[https://developers.google.com/google-ads/api/docs/client-libs/ruby][Ruby]] | [[https://github.com/googleads/google-ads-ruby][google-ads-ruby]] | [[https://github.com/googleads/google-ads-ruby/releases][Gem]] | [[https://github.com/googleads/google-ads-ruby/tree/HEAD/examples][Examples]] |
+| [[https://developers.google.com/google-ads/api/docs/client-libs/perl][Perl]] | [[https://github.com/googleads/google-ads-perl][google-ads-perl]] | [[https://github.com/googleads/google-ads-perl/releases][Releases]] | [[https://github.com/googleads/google-ads-perl/blob/HEAD/examples][Examples]] |
 
 ** Community Implementations
 
