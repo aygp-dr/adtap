@@ -181,6 +181,8 @@ Add links to `docs/references.org` under appropriate sections.
 - Reference: https://developers.google.com/google-ads/api/reference/rpc/v23/overview
 - Protos: https://github.com/googleapis/googleapis/tree/master/google/ads/googleads
 - MCP Server: https://github.com/googleads/google-ads-mcp
+- GAQL Grammar: https://developers.google.com/google-ads/api/docs/query/grammar
+- GAQL Overview: https://developers.google.com/google-ads/api/docs/query/overview
 
 ## Status Enums (Common)
 
