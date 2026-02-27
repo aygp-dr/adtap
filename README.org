@@ -6,6 +6,30 @@
 
 ADTAP provides tools, documentation, and patterns for working with the Google Ads API v23.
 
+* Non-Goals
+
+*This project is strictly READ-ONLY.*
+
+| Excluded Operations | Reason |
+|---------------------+--------|
+| Campaign mutations  | No create/update/delete of campaigns |
+| AdGroup mutations   | No create/update/delete of ad groups |
+| Ad mutations        | No create/update/delete of ads |
+| Budget changes      | No modification of budgets |
+| Bid adjustments     | No modification of bids |
+| Any =Mutate= calls  | All mutate operations are out of scope |
+
+ADTAP is designed for:
+- Exploration and understanding of the Google Ads API
+- Documentation and diagramming of entity relationships
+- Read-only queries via =GoogleAdsService.Search= and =SearchStream=
+- Research and prototyping patterns
+
+ADTAP is *NOT* designed for:
+- Automating campaign management
+- Making any changes to Google Ads accounts
+- Production ad operations
+
 * Getting Started
 
 ** Prerequisites
