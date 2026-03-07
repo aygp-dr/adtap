@@ -1,0 +1,32 @@
+{
+  "repo_id": "repo_019cc64d-be0d-7a48-b372-25ae73450e49",
+  "type": "git",
+  "init_at": "2026-03-07T03:18:29Z",
+  "init_by_email": "apace@defrecord.com",
+  "init_by_name": "Aidan Pace",
+  "repo_salt": "8203f55a42b45f3c42e45e24f2faae8cc774f142",
+  "endpoint": "https://sageox.ai",
+  "fingerprint": {
+    "first_commit": "8203f55a42b45f3c42e45e24f2faae8cc774f142",
+    "monthly_checkpoints": {
+      "2026-02": "8203f55a42b45f3c42e45e24f2faae8cc774f142"
+    },
+    "ancestry_samples": [
+      "8203f55a42b45f3c42e45e24f2faae8cc774f142",
+      "253b6a7f298b63b6a52a1b5fec2091b85382a673",
+      "0fbbcfaf45a85289c93e01ae75179ee6443a1328",
+      "0be34a338d779e4779fa292aac73302a2fbd8019",
+      "3ec499bafbcd406a980c13433016b463f9d80156"
+    ],
+    "remote_hashes": [
+      "sha256:6e322ecc457954f1644075cebeb2f032752ca54c70e5b8cd40c1dd087d268a45"
+    ]
+  },
+  "team_urls": {
+    "Jason Walsh's Team": "https://git.sageox.ai/sageox-team_pk4bkxo7ba/team-context.git",
+    "defrecord": "https://git.sageox.ai/sageox-team_zs4m5dzi79/team-context.git"
+  },
+  "urls_cached_at": "2026-03-07T03:18:30Z",
+  "version": "0.3.0",
+  "updated_at": "2026-03-07T03:18:30Z"
+}

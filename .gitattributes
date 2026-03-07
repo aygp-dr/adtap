@@ -27,3 +27,7 @@ vendor/** linguist-vendored
 
 # Use bd merge for beads JSONL files
 .beads/issues.jsonl merge=beads
+
+# SageOx team context
+.sageox/** linguist-language=SageOx
+*.ox linguist-language=SageOx

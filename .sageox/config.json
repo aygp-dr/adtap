@@ -1,0 +1,11 @@
+{
+  "config_version": "2",
+  "repo_id": "repo_019cc64d-be0d-7a48-b372-25ae73450e49",
+  "repo_remote_hashes": [
+    "sha256:6e322ecc457954f1644075cebeb2f032752ca54c70e5b8cd40c1dd087d268a45"
+  ],
+  "team_id": "team_pk4bkxo7ba",
+  "team_name": "Jason Walsh's Team",
+  "endpoint": "https://sageox.ai",
+  "update_frequency_hours": 24
+}
